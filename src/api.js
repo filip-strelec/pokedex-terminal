@@ -4,8 +4,18 @@ const BASE_URL = 'https://pokeapi.co/api/v2';
 const SPRITE_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 
 async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (err) {
+    throw new Error(
+      err.message?.includes('fetch') || err.code.toUpperCase() === 'ENOTFOUND'
+        ? 'Network error – check your internet connection'
+        : `Request failed: ${err.message}`
+    );
+  }
+  if (res.status === 404) throw new Error('NOT_FOUND');
+  if (!res.ok) throw new Error(`API returned status ${res.status}`);
   return res.json();
 }
 

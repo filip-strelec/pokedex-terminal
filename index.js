@@ -47,8 +47,12 @@ async function showPokemon(nameOrId) {
     console.log(sprite);
     console.log(displayPokemonCard(pokemon));
   } catch (err) {
-    console.log(chalk.red(`\n  ✗ Pokémon not found: "${nameOrId}"`));
-    console.log(chalk.gray('    Try a name (e.g. pikachu) or ID (e.g. 25)\n'));
+    if (err.message.toUpperCase() === 'NOT_FOUND') {
+      console.log(chalk.red(`\n  ✗ Pokémon not found: "${nameOrId}"`));
+      console.log(chalk.gray('    Try a name (e.g. pikachu) or ID (e.g. 25)\n'));
+    } else {
+      console.log(chalk.red(`\n  ✗ ${err.message}\n`));
+    }
   }
 }
 
@@ -80,8 +84,14 @@ async function browsePokemon() {
   let offset = currentId ? Math.floor((currentId - 1) / limit) * limit : 0;
 
   while (true) {
-    console.log(chalk.gray('\n  Loading list...'));
-    const data = await getPokemonList(offset, limit);
+    let data;
+    try {
+      console.log(chalk.gray('\n  Loading list...'));
+      data = await getPokemonList(offset, limit);
+    } catch (err) {
+      console.log(chalk.red(`\n  ✗ ${err.message}\n`));
+      return;
+    }
     console.log(chalk.bold.white(`\n  POKÉMON LIST (${offset + 1}–${offset + data.results.length} of ${data.count})\n`));
 
     data.results.forEach((p, i) => {

@@ -19,7 +19,7 @@ A terminal-based Pokédex that displays Pokémon data with ASCII art sprites, po
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/pokedex-terminal.git
+git clone https://github.com/filip-strelec/pokedex-terminal.git
 cd pokedex-terminal
 
 # Install dependencies
