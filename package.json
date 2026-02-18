@@ -1,0 +1,21 @@
+{
+  "name": "pokedex-terminal",
+  "version": "1.0.0",
+  "description": "A terminal Pokédex with ASCII art sprites",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "pokemon",
+    "pokedex",
+    "ascii",
+    "terminal"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "jimp": "^1.6.0"
+  }
+}
