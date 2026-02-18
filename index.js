@@ -9,6 +9,7 @@ const { catchGame } = require('./src/game');
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
+const WEB_MODE = !!process.env.WEB_MODE;
 const CAUGHT_FILE = path.join(__dirname, 'caught.json');
 
 let currentPokemon = null;
@@ -16,16 +17,28 @@ let currentId = null;
 let caughtPokemon = [];
 
 function loadCaughtPokemon() {
+  if (WEB_MODE) {
+    try {
+      const data = JSON.parse(process.env.CAUGHT_INIT || '[]');
+      caughtPokemon = (data || []).map((id) => ({ id, name: null }));
+    } catch {}
+    return;
+  }
   try {
     if (fs.existsSync(CAUGHT_FILE)) {
       const data = JSON.parse(fs.readFileSync(CAUGHT_FILE, 'utf8'));
       caughtPokemon = (data || []).map((id) => ({ id, name: null }));
     }
-  } catch { /* ignore corrupt file */ } //TODO: add error handling
+  } catch {}
 }
 
 function saveCaughtPokemon() {
   const ids = caughtPokemon.map((p) => p.id);
+  if (WEB_MODE) {
+    // Send to browser via OSC escape sequence — server intercepts this
+    process.stdout.write(`\x1b]9999;${JSON.stringify(ids)}\x07`);
+    return;
+  }
   fs.writeFileSync(CAUGHT_FILE, JSON.stringify(ids, null, 2));
 }
 
