@@ -50,7 +50,7 @@ function printBanner() {
     ║    ◓  T E R M I N A L   P O K É D E X     ║
     ║                                           ║
     ╚═══════════════════════════════════════════╝
-                                    Filip Strelec
+    Made by Filip Strelec
   `));
 }
 
