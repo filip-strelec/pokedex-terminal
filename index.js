@@ -47,7 +47,7 @@ function printBanner() {
   console.log(chalk.red.bold(`
     ╔═══════════════════════════════════════════╗
     ║                                           ║
-    ║    ◓  T E R M I N A L   P O K É D E X    ║
+    ║    ◓  T E R M I N A L   P O K É D E X     ║
     ║                                           ║
     ╚═══════════════════════════════════════════╝
   `));
