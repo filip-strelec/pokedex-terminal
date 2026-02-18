@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Caught Pokémon
+caught.json
+
 # Logs
 logs/
 *.log

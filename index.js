@@ -1,13 +1,33 @@
 const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
 const chalk = require('chalk');
 const { getPokemon, getSpecies, getAbility, getPokemonList, getSpriteUrl } = require('./src/api');
 const { renderSprite, displayPokemonCard, displayDetailedInfo } = require('./src/display');
+const { catchGame } = require('./src/game');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
+const CAUGHT_FILE = path.join(__dirname, 'caught.json');
+
 let currentPokemon = null;
 let currentId = null;
+let caughtPokemon = [];
+
+function loadCaughtPokemon() {
+  try {
+    if (fs.existsSync(CAUGHT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CAUGHT_FILE, 'utf8'));
+      caughtPokemon = (data || []).map((id) => ({ id, name: null }));
+    }
+  } catch { /* ignore corrupt file */ } //TODO: add error handling
+}
+
+function saveCaughtPokemon() {
+  const ids = caughtPokemon.map((p) => p.id);
+  fs.writeFileSync(CAUGHT_FILE, JSON.stringify(ids, null, 2));
+}
 
 function printBanner() {
   console.clear();
@@ -29,6 +49,11 @@ function printMenu() {
     console.log(chalk.white('  [4]') + chalk.gray(` View details for ${chalk.yellow(currentPokemon.name)}`));
     console.log(chalk.white('  [5]') + chalk.gray(' Next Pokémon →'));
     console.log(chalk.white('  [6]') + chalk.gray(' ← Previous Pokémon'));
+    const already = caughtPokemon.some((p) => p.id === currentPokemon.id);
+    console.log(chalk.white('  [7]') + chalk.gray(` ${already ? '(already caught) ' : ''}Throw Pokéball at ${chalk.yellow(currentPokemon.name)} ◓`));
+  }
+  if (caughtPokemon.length > 0) {
+    console.log(chalk.white('  [8]') + chalk.gray(` View caught Pokémon (${caughtPokemon.length})`));
   }
   console.log(chalk.white('  [q]') + chalk.gray(' Quit'));
   console.log('');
@@ -113,7 +138,45 @@ async function browsePokemon() {
   }
 }
 
+async function viewCaughtCollection() {
+  if (caughtPokemon.length === 0) {
+    console.log(chalk.gray('\n  No Pokémon caught yet!\n'));
+    return;
+  }
+
+  // Ensure names are loaded (they may be null if loaded from file)
+  for (const p of caughtPokemon) {
+    if (!p.name) {
+      try {
+        const data = await getPokemon(p.id);
+        p.name = data.name;
+      } catch { p.name = `pokemon-${p.id}`; }
+    }
+  }
+
+  while (true) {
+    console.log(chalk.bold.white('\n  ◓ CAUGHT POKÉMON') + chalk.gray(` (${caughtPokemon.length})\n`));
+    console.log(chalk.cyan('  ' + '─'.repeat(50)));
+    caughtPokemon.forEach((p, i) => {
+      const n = p.name.charAt(0).toUpperCase() + p.name.slice(1);
+      console.log(`  ${chalk.white(String(i + 1).padStart(3) + '.')} ${chalk.white(`#${String(p.id).padStart(4, '0')}`)} ${chalk.yellow(n)}`);
+    });
+    console.log(chalk.cyan('  ' + '─'.repeat(50)));
+    console.log(chalk.gray('\n  [number] View Pokémon  [b] Back\n'));
+
+    const input = (await ask(chalk.cyan('  > '))).trim().toLowerCase();
+    if (input === 'b') return;
+
+    const idx = parseInt(input, 10);
+    if (!isNaN(idx) && idx >= 1 && idx <= caughtPokemon.length) {
+      await showPokemon(caughtPokemon[idx - 1].id);
+      return;
+    }
+  }
+}
+
 async function main() {
+  loadCaughtPokemon();
   printBanner();
 
   while (true) {
@@ -144,6 +207,20 @@ async function main() {
       case '6':
         if (currentId && currentId > 1) await showPokemon(currentId - 1);
         else console.log(chalk.red('\n  ✗ Cannot go below #1.\n'));
+        break;
+      case '7':
+        if (currentPokemon) {
+          const result = await catchGame(currentPokemon, rl);
+          if (result.caught && !caughtPokemon.some((p) => p.id === currentPokemon.id)) {
+            caughtPokemon.push({ id: currentPokemon.id, name: currentPokemon.name });
+            saveCaughtPokemon();
+          }
+        } else {
+          console.log(chalk.red('\n  ✗ No Pokémon loaded.\n'));
+        }
+        break;
+      case '8':
+        await viewCaughtCollection();
         break;
       case 'q':
       case 'quit':

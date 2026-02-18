@@ -1,5 +1,5 @@
 const chalk = require('chalk');
-const Jimp = require('jimp');
+const { Jimp, intToRGBA } = require('jimp');
 
 const TYPE_COLORS = {
   normal: '#A8A77A', fire: '#EE8130', water: '#6390F0', electric: '#F7D02C',
@@ -20,7 +20,7 @@ async function renderSprite(spriteUrl, cols = 70, rows = 35) {
     const image = await Jimp.read(spriteUrl);
 
     const pixelH = rows * 2;
-    image.resize(cols, pixelH);
+    image.resize({ w: cols, h: pixelH });
 
     const UPPER = '▀';
     const LOWER = '▄';
@@ -30,8 +30,8 @@ async function renderSprite(spriteUrl, cols = 70, rows = 35) {
     for (let y = 0; y < pixelH; y += 2) {
       let line = '';
       for (let x = 0; x < cols; x++) {
-        const topColor = Jimp.intToRGBA(image.getPixelColor(x, y));
-        const botColor = Jimp.intToRGBA(image.getPixelColor(x, y + 1));
+        const topColor = intToRGBA(image.getPixelColor(x, y));
+        const botColor = intToRGBA(image.getPixelColor(x, y + 1));
         const topVis = topColor.a > ALPHA_THRESHOLD;
         const botVis = botColor.a > ALPHA_THRESHOLD;
 
