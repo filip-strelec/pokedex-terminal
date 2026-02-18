@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terminal Pokédex</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #1a1a2e; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+    #terminal { width: 100%; height: 100%; }
+    #restart-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      padding: 10px 20px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+      z-index: 1000;
+      display: none;
+    }
+    #restart-btn:hover { background: #c0392b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    #restart-btn:active { transform: translateY(0); }
+    #restart-btn.show { display: block; }
+  </style>
+</head>
+<body>
+  <button id="restart-btn">↻ Restart</button>
+  <div id="terminal"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.js"></script>
+  <script>
+    const STORAGE_KEY = 'pokedex-caught';
+    const restartBtn = document.getElementById('restart-btn');
+    let ws = null;
+    let currentMode = 'pokedex'; // 'pokedex' or 'shell'
+    let dataDisposable = null; // Store the onData disposable to prevent duplicates
+
+    function loadCaught() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch { return []; }
+    }
+
+    function saveCaught(ids) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+    }
+
+    // Setup terminal
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
+      theme: {
+        background: '#1a1a2e',
+        foreground: '#e0e0e0',
+        cursor: '#e0e0e0',
+      },
+      allowProposedApi: true,
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.loadAddon(new WebLinksAddon.WebLinksAddon());
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+
+    // WebSocket connection
+    function connect(mode = 'pokedex') {
+      // Clean up previous onData listener to prevent duplicates
+      if (dataDisposable) {
+        dataDisposable.dispose();
+        dataDisposable = null;
+      }
+
+      currentMode = mode;
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/terminal`);
+
+      ws.onopen = () => {
+        // Send init message with mode and caught data
+        const initMsg = { type: 'init', mode: currentMode };
+        if (mode === 'pokedex') {
+          initMsg.caught = loadCaught();
+        }
+        ws.send(JSON.stringify(initMsg));
+
+        if (mode === 'shell') {
+          restartBtn.textContent = '↻ Restart Pokédex';
+          restartBtn.classList.add('show');
+        } else {
+          restartBtn.textContent = '↻ Restart';
+          restartBtn.classList.remove('show');
+        }
+
+        setTimeout(sendResize, 100);
+      };
+
+      ws.onmessage = (e) => {
+        if (typeof e.data === 'string') {
+          // Check if it's a JSON message
+          try {
+            const msg = JSON.parse(e.data);
+
+            // Pokédex app exited → switch to shell
+            if (msg.type === 'app-exited') {
+              term.write('\r\n\x1b[1;32m  Pokédex closed. Starting shell...\x1b[0m\r\n\r\n');
+              setTimeout(() => {
+                ws.close();
+                term.clear();
+                connect('shell');
+              }, 1500);
+              return;
+            }
+
+            // Caught Pokémon sync
+            if (msg.type === 'sync' && Array.isArray(msg.caught)) {
+              saveCaught(msg.caught);
+              return;
+            }
+          } catch {}
+          // Regular terminal output
+          term.write(e.data);
+        }
+      };
+
+      ws.onclose = () => {
+        if (currentMode === 'pokedex') {
+          term.write('\r\n\x1b[1;33m  Connection lost. Click "Restart" to reconnect.\x1b[0m\r\n');
+          restartBtn.classList.add('show');
+        }
+      };
+
+      // Send terminal input to server (store disposable to clean up later)
+      dataDisposable = term.onData((data) => {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
+      });
+    }
+
+    // Restart button handler
+    restartBtn.addEventListener('click', () => {
+      term.clear();
+      if (ws) ws.close();
+      connect('pokedex'); // Always restart to Pokédex
+    });
+
+    // Initial connection
+    connect('pokedex');
+
+    // Handle resize
+    function sendResize() {
+      fitAddon.fit();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+      }
+    }
+
+    window.addEventListener('resize', sendResize);
+  </script>
+</body>
+</html>
+
