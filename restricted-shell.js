@@ -153,7 +153,7 @@ function executeCommand(input) {
 }
 
 console.log('\x1b[1;36m╔════════════════════════════════════════╗\x1b[0m');
-console.log('\x1b[1;36m║   Restricted Shell (Read-Only Mode)   ║\x1b[0m');
+console.log('\x1b[1;36m║   Restricted Shell (Read-Only Mode)    ║\x1b[0m');
 console.log('\x1b[1;36m╚════════════════════════════════════════╝\x1b[0m');
 console.log('\x1b[90mType "help" for available commands\x1b[0m\n');
 
