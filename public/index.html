@@ -45,6 +45,12 @@
     let currentMode = 'pokedex'; // 'pokedex' or 'shell'
     let dataDisposable = null; // Store the onData disposable to prevent duplicates
 
+    // Parse URL query parameters
+    function getUrlParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
     function loadCaught() {
       try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
       catch { return []; }
@@ -102,6 +108,20 @@
         }
 
         setTimeout(sendResize, 100);
+
+        // Auto-search for Pokémon from URL parameter
+        if (mode === 'pokedex') {
+          const pokemonParam = getUrlParam('pokemon');
+          if (pokemonParam) {
+            // Wait for terminal to be ready, then send commands
+            setTimeout(() => {
+              ws.send('1\n');  // Select option 1 (Search)
+              setTimeout(() => {
+                ws.send(pokemonParam + '\n');  // Send the Pokémon name/ID
+              }, 150);
+            }, 300);
+          }
+        }
       };
 
       ws.onmessage = (e) => {
