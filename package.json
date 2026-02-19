@@ -4,8 +4,8 @@
   "description": "A terminal Pokédex with ASCII art sprites",
   "main": "index.js",
   "scripts": {
-    "start:web": "node server.js",
-    "start":"node index.js"
+    "start": "node server.js",
+    "start:local": "node index.js"
   },
   "engines": {
     "node": ">=18.0.0"
